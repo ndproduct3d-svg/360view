@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>m600</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#080809;--surface:#111114;--border:rgba(255,255,255,0.07);--text:#e8e8ec;--muted:#555;--accent:#c8f050;--font:'Syne',sans-serif;--mono:'JetBrains Mono',monospace}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-family:var(--font);overflow:hidden}
+.app{display:flex;flex-direction:column;height:100vh}
+.viewer{position:relative;flex:1;background:#000;overflow:hidden;cursor:grab;user-select:none}
+.viewer.drag{cursor:grabbing}
+.cv{position:absolute;inset:0;width:100%;height:100%;display:block;image-rendering:auto}
+.vignette{position:absolute;inset:0;pointer-events:none;z-index:4;background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,0.5) 100%)}
+.vui{position:absolute;inset:0;pointer-events:none;z-index:10;display:flex;flex-direction:column;justify-content:space-between;padding:16px}
+.brand-name{font-size:12px;font-weight:700;color:var(--accent);letter-spacing:0.12em;text-transform:uppercase}
+.brand-sub{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:2px}
+.bdg{background:rgba(8,8,9,0.8);border:1px solid rgba(200,240,80,0.3);border-radius:20px;padding:3px 10px;font-size:10px;font-family:var(--mono);color:var(--accent);backdrop-filter:blur(8px)}
+.bdg::before{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);margin-right:5px;animation:blink 1.4s ease infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.hint{align-self:center;background:rgba(8,8,9,0.75);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:5px 15px;font-size:11px;color:var(--muted);backdrop-filter:blur(8px);transition:opacity .5s;font-family:var(--mono)}
+.hint.fade{opacity:0}
+.prog-wrap{display:flex;align-items:center;gap:10px;pointer-events:all;background:rgba(8,8,9,0.7);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px 14px;backdrop-filter:blur(10px)}
+.prog-track{flex:1;height:2px;background:rgba(255,255,255,0.08);border-radius:1px;position:relative;cursor:pointer}
+.prog-fill{height:100%;background:var(--accent);border-radius:1px;width:0%}
+.prog-thumb{position:absolute;top:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid #000;left:0%}
+.fnum{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:50px;text-align:right}
+.toolbar{background:var(--surface);border-top:1px solid var(--border);padding:9px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;gap:5px;background:transparent;border:1px solid var(--border);border-radius:7px;color:var(--text);font-family:var(--font);font-size:12px;font-weight:500;padding:7px 13px;cursor:pointer;transition:all .15s}
+.btn:hover{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.15)}
+.btn.on{background:rgba(200,240,80,0.08);border-color:rgba(200,240,80,0.5);color:var(--accent)}
+.div{width:1px;height:20px;background:var(--border);flex-shrink:0}
+.stat-bar{background:var(--surface);border-top:1px solid var(--border);padding:4px 16px;display:flex;gap:14px;flex-shrink:0;align-items:center}
+.st{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.st strong{color:var(--text)}
+.loader{position:absolute;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(8,8,9,0.92);flex-direction:column;gap:14px;backdrop-filter:blur(6px)}
+.loader.hidden{display:none}
+.lbar{width:200px;height:2px;background:rgba(255,255,255,0.06);border-radius:1px;overflow:hidden}
+.lfill{height:100%;background:var(--accent);width:0%;transition:width .2s}
+.ltxt{font-size:11px;color:var(--muted);font-family:var(--mono)}
+.lerr{font-size:12px;color:#f07070;font-family:var(--mono);text-align:center;padding:0 24px;line-height:1.8;white-space:pre-line}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="viewer" id="viewer">
+    <canvas class="cv" id="cvA"></canvas>
+    <div class="vignette"></div>
+    <div class="loader" id="loader">
+      <div class="lbar"><div class="lfill" id="lfill"></div></div>
+      <div class="ltxt" id="ltxt">Загрузка кадров...</div>
+      <div class="lerr" id="lerr" style="display:none"></div>
+    </div>
+    <div class="vui">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div><div class="brand-name">m600</div><div class="brand-sub">360 frames · 360°</div></div>
+        <span class="bdg">LIVE</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="hint" id="hint">← → вращение · колесо = перемотка</div>
+        <div class="prog-wrap">
+          <div class="prog-track" id="prog-track">
+            <div class="prog-fill" id="prog-fill"></div>
+            <div class="prog-thumb" id="prog-thumb"></div>
+          </div>
+          <div class="fnum" id="fnum">1 / 360</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="toolbar">
+    <button class="btn" id="btn-auto" onclick="toggleAuto()">▶ Авто</button>
+    <button class="btn" onclick="resetView()">↺ Сброс</button>
+    <div class="div"></div>
+    <button class="btn" onclick="downloadFrame()">↓ Скачать кадр</button>
+  </div>
+  <div class="stat-bar"><span class="st" id="st">Загрузка...</span></div>
+</div>
+<script>
+const C={p:'frames',n:360,px:'1_',ex:'jpg',d:4,sx:1.0,ease:.18,inertia:.92,spd:12};
+const viewer=document.getElementById('viewer'),cvA=document.getElementById('cvA'),loader=document.getElementById('loader');
+const imgs=[];let loaded=0,shown=false,fF=0,tF=0,vX=0,drag=false,px=0,autoR=false;
+function dpr(){return window.devicePixelRatio||1}
+function resize(){const d=dpr(),w=viewer.clientWidth,h=viewer.clientHeight;cvA.width=Math.round(w*d);cvA.height=Math.round(h*d);cvA.style.width=w+'px';cvA.style.height=h+'px';draw()}
+function draw(){if(!shown)return;const n=C.n,f=((Math.round(fF)%n)+n)%n,img=getImg(f);if(!img)return;const ctx=cvA.getContext('2d'),w=cvA.width,h=cvA.height;ctx.clearRect(0,0,w,h);ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';const r=Math.min(w/img.naturalWidth,h/img.naturalHeight),dw=img.naturalWidth*r,dh=img.naturalHeight*r;ctx.drawImage(img,(w-dw)/2,(h-dh)/2,dw,dh);const pct=(f/(n-1))*100;document.getElementById('prog-fill').style.width=pct+'%';document.getElementById('prog-thumb').style.left=pct+'%';document.getElementById('fnum').textContent=(f+1)+' / '+n}
+function getImg(i){const n=C.n;for(let d=0;d<n;d++){const a=imgs[(i+d)%n];if(a&&a.complete&&a.naturalWidth)return a;const b=imgs[(i-d+n)%n];if(b&&b.complete&&b.naturalWidth)return b}return null}
+function loop(){requestAnimationFrame(loop);if(!shown)return;if(autoR)tF+=C.spd/60;fF+=(tF-fF)*Math.min(C.ease*3,1);if(!drag&&Math.abs(vX)>0.05){tF+=vX;vX*=C.inertia}draw()}
+function pad(n){return String(n+1).padStart(C.d,'0')}
+function loadAll(){let err=0;for(let i=0;i<C.n;i++){const img=new Image();img.onload=()=>{imgs[i]=img;loaded++;document.getElementById('lfill').style.width=Math.round(loaded/C.n*100)+'%';document.getElementById('ltxt').textContent='Загружено '+loaded+' / '+C.n;if(!shown){shown=true;loader.classList.add('hidden');document.getElementById('st').innerHTML='<strong>360</strong> кадров'}};img.onerror=()=>{loaded++;err++;if(loaded===C.n&&err===C.n){loader.classList.remove('hidden');document.getElementById('lerr').style.display='block';document.getElementById('lerr').textContent='Кадры не найдены\n\nОжидалось: frames/1_'+pad(0)+'.jpg\n\nПроверь что кадры загружены в папку frames/'}};imgs.push(null);img.src=C.p+'/'+C.px+pad(i)+'.'+C.ex}}
+viewer.addEventListener('mousedown',e=>{drag=true;px=e.clientX;vX=0;viewer.classList.add('drag')});
+window.addEventListener('mouseup',()=>{drag=false;viewer.classList.remove('drag')});
+window.addEventListener('mousemove',e=>{if(!drag)return;const dx=e.clientX-px;px=e.clientX;tF-=dx*C.sx;vX=-dx*C.sx*0.25});
+viewer.addEventListener('touchstart',e=>{if(e.touches.length===1){drag=true;px=e.touches[0].clientX;vX=0}},{passive:true});
+window.addEventListener('touchend',()=>drag=false);
+window.addEventListener('touchmove',e=>{if(!drag||!e.touches.length)return;const dx=e.touches[0].clientX-px;px=e.touches[0].clientX;tF-=dx*C.sx;vX=-dx*C.sx*0.25},{passive:true});
+viewer.addEventListener('wheel',e=>{e.preventDefault();tF+=e.deltaY*0.06},{passive:false});
+document.getElementById('prog-track').addEventListener('click',e=>{const r=e.currentTarget.getBoundingClientRect();tF=Math.round((e.clientX-r.left)/r.width*(C.n-1));fF=tF});
+function toggleAuto(){autoR=!autoR;const b=document.getElementById('btn-auto');b.classList.toggle('on',autoR);b.textContent=autoR?'⏸ Стоп':'▶ Авто'}
+function resetView(){tF=0;fF=0;vX=0}
+function downloadFrame(){const d=dpr(),w=viewer.clientWidth,h=viewer.clientHeight,out=document.createElement('canvas');out.width=Math.round(w*d);out.height=Math.round(h*d);out.getContext('2d').drawImage(cvA,0,0);const a=document.createElement('a');a.download='frame-'+Date.now()+'.png';a.href=out.toDataURL('image/png');a.click()}
+window.addEventListener('resize',resize);
+let ht;viewer.addEventListener('mousedown',()=>{clearTimeout(ht);document.getElementById('hint').classList.remove('fade');ht=setTimeout(()=>document.getElementById('hint').classList.add('fade'),3000)});
+resize();loop();loadAll();setTimeout(()=>document.getElementById('hint').classList.add('fade'),4000);
+</script>
+</body>
+</html>
